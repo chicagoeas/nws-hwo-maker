@@ -232,6 +232,10 @@
         spotterStatement: "Spotter activation will not be needed."
       }
     ];
+    const MARINE_HAZARD_NAMES = new Set([
+      "Marine Hazard Risk",
+      "Freezing Spray Risk"
+    ]);
 
     const officeSelect = document.getElementById("wfo");
     const refreshButton = document.getElementById("refresh");
@@ -331,8 +335,11 @@
       }
 
       const allHazards = payload.hazards || [];
-      const landHazards = allHazards.filter((hazard) => hazard.webTab !== "marine");
-      const marineHazards = allHazards.filter((hazard) => hazard.webTab === "marine");
+      const isMarineHazard = (hazard) =>
+        hazard.webTab === "marine" ||
+        MARINE_HAZARD_NAMES.has(String(hazard.name || "").trim());
+      const landHazards = allHazards.filter((hazard) => !isMarineHazard(hazard));
+      const marineHazards = allHazards.filter(isMarineHazard);
       const reports = [
         formatLandOutlook(landHazards, office, issueDate)
       ];
