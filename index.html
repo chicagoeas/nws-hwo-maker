@@ -200,7 +200,28 @@
     // Change it if the Worker is deployed at a different hostname.
     const WORKER_BASE_URL = "https://api.skymonitor.app";
     const OFFICES = [
-      { code: "LOT", name: "Chicago, IL", title: "Chicago (LOT)", timeZone: "America/Chicago" }
+      {
+        code: "LOT",
+        name: "Chicago, IL",
+        title: "Chicago (LOT)",
+        timeZone: "America/Chicago",
+        easternTimeZone: "America/New_York",
+        wmoPrefix: "FLUS43 KLOT",
+        productId: "HWOLOT",
+        officeLine: "National Weather Service Chicago IL",
+        coverage: "This Hazardous Weather Outlook is for portions of central Illinois, east central Illinois, north central Illinois, northeast Illinois, and northwest Indiana.",
+        ugcLines: [
+          "ILZ003>006-008-010>013-019>021-023-032-033-039-103>108-INZ001-002-",
+          "010-011-019-"
+        ],
+        zoneNameLines: [
+          "Winnebago-Boone-McHenry-Lake IL-Ogle-Lee-De Kalb-Kane-DuPage-",
+          "La Salle-Kendall-Grundy-Kankakee-Livingston-Iroquois-Ford-",
+          "Northern Cook-Central Cook-Southern Cook-Northern Will-",
+          "Southern Will-Eastern Will-Lake IN-Porter-Newton-Jasper-Benton-"
+        ],
+        spotterStatement: "Spotter activation will not be needed."
+      }
     ];
 
     const officeSelect = document.getElementById("wfo");
@@ -238,6 +259,43 @@
       }).format(date);
     }
 
+    function formatNwsTimestamp(date, timeZone) {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hourCycle: "h12",
+        timeZone,
+        timeZoneName: "short"
+      }).formatToParts(date);
+      const value = (type) => parts.find((part) => part.type === type)?.value || "";
+      const nwsTime = `${value("hour")}${value("minute")} ${value("dayPeriod")} ${value("timeZoneName")}`;
+      return `${nwsTime} ${value("weekday")} ${value("month")} ${value("day")} ${value("year")}`;
+    }
+
+    function formatUtcCode(date) {
+      const day = String(date.getUTCDate()).padStart(2, "0");
+      const hour = String(date.getUTCHours()).padStart(2, "0");
+      const minute = String(date.getUTCMinutes()).padStart(2, "0");
+      return `${day}${hour}${minute}`;
+    }
+
+    function weekdayFromDate(value) {
+      return String(value || "").split(",")[0].trim();
+    }
+
+    function firstDayLabel(date, timeZone) {
+      const hour = Number(new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        hourCycle: "h23",
+        timeZone
+      }).format(date));
+      return hour >= 12 ? "Tonight" : "Today and Tonight";
+    }
+
     function dateTime(value) {
       const parsed = Date.parse(value || "");
       return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
@@ -259,32 +317,84 @@
 
     function formatText(payload, office) {
       const days = buildDays(payload.hazards || []);
+      const issueDate = new Date(payload.generationTimeUtc);
+      if (Number.isNaN(issueDate.getTime())) {
+        throw new Error("The graphical HWO did not include a valid update time.");
+      }
+
+      const expiryDate = new Date(issueDate.getTime() + 24 * 60 * 60 * 1000);
+      const issueLine = formatNwsTimestamp(issueDate, office.timeZone);
+      const dualZoneIssueLine =
+        `${issueLine} /${formatNwsTimestamp(issueDate, office.easternTimeZone)}/`;
+      const ugcLines = [...office.ugcLines];
+      ugcLines[ugcLines.length - 1] += `${formatUtcCode(expiryDate)}-`;
       const lines = [
-        "HAZARDOUS WEATHER OUTLOOK — TEXT SUMMARY",
-        `National Weather Service ${payload.officeName || office.name} (${office.code})`,
-        `Updated: ${formatIssuedAt(payload.generationTimeUtc, office.timeZone)}`,
+        `${office.wmoPrefix} ${formatUtcCode(issueDate)}`,
+        office.productId,
+        "",
+        "Hazardous Weather Outlook",
+        office.officeLine,
+        issueLine,
+        "",
+        ...ugcLines,
+        ...office.zoneNameLines,
+        dualZoneIssueLine,
+        "",
+        office.coverage,
+        "",
+        `.DAY ONE...${firstDayLabel(issueDate, office.timeZone)}`,
         ""
       ];
 
       if (!days.length) {
-        lines.push("No forecast periods were included in the graphical HWO data.");
+        lines.push("No hazardous weather is expected at this time.");
+        lines.push("");
+        lines.push(".DAYS TWO THROUGH SEVEN...");
+        lines.push("");
+        lines.push("No hazardous weather is expected at this time.");
+        lines.push("");
+        lines.push(".SPOTTER INFORMATION STATEMENT...");
+        lines.push("");
+        lines.push(office.spotterStatement);
+        lines.push("");
+        lines.push("$$");
         return lines.join("\n");
       }
 
-      lines.push(`.DAY ONE...${days[0].date}.`);
-      lines.push("Hazards shown in the graphical outlook:");
       appendDayRisks(lines, days[0]);
 
       if (days.length > 1) {
         lines.push("");
-        lines.push(`.DAYS TWO THROUGH SEVEN...${days[1].date} through ${days[days.length - 1].date}.`);
-        for (let index = 1; index < days.length; index += 1) {
-          lines.push("");
-          lines.push(`${days[index].date}:`);
-          appendDayRisks(lines, days[index]);
+        lines.push(
+          `.DAYS TWO THROUGH SEVEN...${weekdayFromDate(days[1].date)} through ${weekdayFromDate(days[days.length - 1].date)}`
+        );
+        lines.push("");
+
+        const futureDays = days.slice(1);
+        const futureHazardDays = futureDays.filter((day) =>
+          day.periods.some(({ period }) => {
+            if (period.level == null || period.level === "") return true;
+            return Number(period.level) > 0;
+          })
+        );
+
+        if (!futureHazardDays.length) {
+          lines.push("No hazardous weather is expected at this time.");
+        } else {
+          for (const day of futureHazardDays) {
+            lines.push(`${weekdayFromDate(day.date)}...`);
+            appendDayRisks(lines, day);
+            lines.push("");
+          }
         }
       }
 
+      lines.push("");
+      lines.push(".SPOTTER INFORMATION STATEMENT...");
+      lines.push("");
+      lines.push(office.spotterStatement);
+      lines.push("");
+      lines.push("$$");
       return lines.join("\n");
     }
 
@@ -299,18 +409,18 @@
       );
 
       if (!active.length && !unmapped.length) {
-        lines.push("  No risk category above Level 0 is shown.");
+        lines.push("No hazardous weather is expected at this time.");
         return;
       }
 
       for (const { hazard, period } of active) {
         const name = hazard.name.replace(/\s+Risk$/i, "");
-        const detail = period.definition ? ` — ${period.definition}` : "";
-        lines.push(`  ${name} Risk: Level ${period.level}${detail}`);
+        const detail = period.definition ? ` - ${period.definition}` : "";
+        lines.push(`${name} Risk Level ${period.level}${detail}`);
       }
 
       for (const { hazard } of unmapped) {
-        lines.push(`  ${hazard.name}: category unavailable; consult the official graphical HWO.`);
+        lines.push(`${hazard.name}: category unavailable; consult the official graphical HWO.`);
       }
     }
 
