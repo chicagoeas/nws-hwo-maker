@@ -220,6 +220,15 @@
           "Northern Cook-Central Cook-Southern Cook-Northern Will-",
           "Southern Will-Eastern Will-Lake IN-Porter-Newton-Jasper-Benton-"
         ],
+        marineUgcLines: ["LMZ740>745-"],
+        marineZoneNameLines: [
+          "Winthrop Harbor to Wilmette Harbor IL-",
+          "Wilmette Harbor to Northerly Island IL-",
+          "Northerly Island to Calumet Harbor IL-",
+          "Calumet Harbor IL to Gary IN-Gary to Burns Harbor IN-",
+          "Burns Harbor to Michigan City IN-"
+        ],
+        marineCoverage: "This Hazardous Weather Outlook is for portions of Lake Michigan.",
         spotterStatement: "Spotter activation will not be needed."
       }
     ];
@@ -316,18 +325,31 @@
     }
 
     function formatText(payload, office) {
-      const days = buildDays(payload.hazards || []);
       const issueDate = new Date(payload.generationTimeUtc);
       if (Number.isNaN(issueDate.getTime())) {
         throw new Error("The graphical HWO did not include a valid update time.");
       }
 
+      const allHazards = payload.hazards || [];
+      const landHazards = allHazards.filter((hazard) => hazard.webTab !== "marine");
+      const marineHazards = allHazards.filter((hazard) => hazard.webTab === "marine");
+      const reports = [
+        formatLandOutlook(landHazards, office, issueDate)
+      ];
+      if (marineHazards.length) {
+        reports.push(formatMarineOutlook(marineHazards, office, issueDate));
+      }
+      return reports.join("\n\n");
+    }
+
+    function formatLandOutlook(hazards, office, issueDate) {
       const expiryDate = new Date(issueDate.getTime() + 24 * 60 * 60 * 1000);
       const issueLine = formatNwsTimestamp(issueDate, office.timeZone);
       const dualZoneIssueLine =
         `${issueLine} /${formatNwsTimestamp(issueDate, office.easternTimeZone)}/`;
       const ugcLines = [...office.ugcLines];
       ugcLines[ugcLines.length - 1] += `${formatUtcCode(expiryDate)}-`;
+      const days = buildDays(hazards);
       const lines = [
         `${office.wmoPrefix} ${formatUtcCode(issueDate)}`,
         office.productId,
@@ -342,52 +364,10 @@
         "",
         office.coverage,
         "",
-        `.DAY ONE...${firstDayLabel(issueDate, office.timeZone)}`,
-        ""
+        `.DAY ONE...${firstDayLabel(issueDate, office.timeZone)}`
       ];
 
-      if (!days.length) {
-        lines.push("No hazardous weather is expected at this time.");
-        lines.push("");
-        lines.push(".DAYS TWO THROUGH SEVEN...");
-        lines.push("");
-        lines.push("No hazardous weather is expected at this time.");
-        lines.push("");
-        lines.push(".SPOTTER INFORMATION STATEMENT...");
-        lines.push("");
-        lines.push(office.spotterStatement);
-        lines.push("");
-        lines.push("$$");
-        return lines.join("\n");
-      }
-
-      appendDayRisks(lines, days[0]);
-
-      if (days.length > 1) {
-        lines.push("");
-        lines.push(
-          `.DAYS TWO THROUGH SEVEN...${weekdayFromDate(days[1].date)} through ${weekdayFromDate(days[days.length - 1].date)}`
-        );
-        lines.push("");
-
-        const futureDays = days.slice(1);
-        const futureHazardDays = futureDays.filter((day) =>
-          day.periods.some(({ period }) => {
-            if (period.level == null || period.level === "") return true;
-            return Number(period.level) > 0;
-          })
-        );
-
-        if (!futureHazardDays.length) {
-          lines.push("No hazardous weather is expected at this time.");
-        } else {
-          for (const day of futureHazardDays) {
-            lines.push(`${weekdayFromDate(day.date)}...`);
-            appendDayRisks(lines, day);
-            lines.push("");
-          }
-        }
-      }
+      appendOutlookDays(lines, days);
 
       lines.push("");
       lines.push(".SPOTTER INFORMATION STATEMENT...");
@@ -396,6 +376,69 @@
       lines.push("");
       lines.push("$$");
       return lines.join("\n");
+    }
+
+    function formatMarineOutlook(hazards, office, issueDate) {
+      const expiryDate = new Date(issueDate.getTime() + 24 * 60 * 60 * 1000);
+      const marineUgcLines = [...office.marineUgcLines];
+      marineUgcLines[marineUgcLines.length - 1] += `${formatUtcCode(expiryDate)}-`;
+      const days = buildDays(hazards);
+      const lines = [
+        ...marineUgcLines,
+        ...office.marineZoneNameLines,
+        formatNwsTimestamp(issueDate, office.timeZone),
+        "",
+        office.marineCoverage,
+        "",
+        `.DAY ONE...${firstDayLabel(issueDate, office.timeZone)}`
+      ];
+
+      appendOutlookDays(lines, days);
+      lines.push("");
+      lines.push("$$");
+      return lines.join("\n");
+    }
+
+    function appendOutlookDays(lines, days) {
+      lines.push("");
+      if (!days.length) {
+        lines.push("No hazardous weather is expected at this time.");
+        lines.push("");
+        lines.push(".DAYS TWO THROUGH SEVEN...");
+        lines.push("");
+        lines.push("No hazardous weather is expected at this time.");
+        return;
+      }
+
+      appendDayRisks(lines, days[0]);
+
+      if (days.length <= 1) return;
+      lines.push("");
+      lines.push(
+        `.DAYS TWO THROUGH SEVEN...${weekdayFromDate(days[1].date)} through ${weekdayFromDate(days[days.length - 1].date)}`
+      );
+      lines.push("");
+
+      const futureDays = days.slice(1);
+      const futureHazardDays = futureDays.filter((day) =>
+        day.periods.some(({ period }) => {
+          if (period.level == null || period.level === "") return true;
+          const level = Number(period.level);
+          return Number.isFinite(level) && level > 0;
+        })
+      );
+
+      if (!futureHazardDays.length) {
+        lines.push("No hazardous weather is expected at this time.");
+        return;
+      }
+
+      for (let index = 0; index < futureHazardDays.length; index += 1) {
+        const day = futureHazardDays[index];
+        if (index > 0) lines.push("");
+        lines.push(`${weekdayFromDate(day.date)}...`);
+        appendDayRisks(lines, day);
+      }
     }
 
     function appendDayRisks(lines, day) {
