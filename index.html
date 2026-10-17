@@ -116,6 +116,12 @@
       text-underline-offset: 2px;
     }
 
+    .source-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+    }
+
     .updated {
       margin: 0 0 12px;
       line-height: 1.5;
@@ -187,7 +193,10 @@
 
     <div class="report-heading">
       <h1 id="office-title">Chicago (LOT)</h1>
-      <a id="source-link" class="source-link" href="https://www.weather.gov/erh/ghwo?wfo=lot" target="_blank" rel="noopener noreferrer">Official graphical HWO</a>
+      <div class="source-links">
+        <a id="source-link" class="source-link" href="https://www.weather.gov/erh/ghwo?wfo=lot" target="_blank" rel="noopener noreferrer">Official graphical HWO</a>
+        <a id="raw-text-link" class="source-link" href="https://hwo.skymonitor.app/LOT.txt" target="_blank" rel="noopener noreferrer">Raw LOT.txt</a>
+      </div>
     </div>
     <p id="updated" class="updated">Loading update time…</p>
     <p class="notice">Unofficial text rendering of risk categories in the NWS Graphical HWO. Not issued or approved by the NWS; use the official source for the maps and current information.</p>
@@ -199,6 +208,7 @@
     // This is the custom domain shown in the supplied SkyMonitor Worker.
     // Change it if the Worker is deployed at a different hostname.
     const WORKER_BASE_URL = "https://api.skymonitor.app";
+    const HWO_TEXT_BASE_URL = "https://hwo.skymonitor.app";
     const OFFICES = [
       {
         code: "LOT",
@@ -243,6 +253,7 @@
     const reportElement = document.getElementById("report");
     const updatedElement = document.getElementById("updated");
     const sourceLink = document.getElementById("source-link");
+    const rawTextLink = document.getElementById("raw-text-link");
     let currentText = "";
 
     for (const office of OFFICES) {
@@ -485,6 +496,8 @@
       refreshButton.disabled = true;
       copyButton.disabled = true;
       sourceLink.href = `https://www.weather.gov/erh/ghwo?wfo=${office.code.toLowerCase()}`;
+      rawTextLink.href = `${HWO_TEXT_BASE_URL}/${office.code}.txt`;
+      rawTextLink.textContent = `Raw ${office.code}.txt`;
       document.getElementById("office-title").textContent = office.title;
 
       try {
@@ -496,7 +509,9 @@
           throw new Error(payload.error || `Worker returned HTTP ${response.status}`);
         }
 
-        currentText = formatText(payload, office);
+        currentText = typeof payload.text === "string" && payload.text
+          ? payload.text
+          : formatText(payload, office);
         reportElement.textContent = currentText;
         updatedElement.textContent = `Graphical HWO updated: ${formatIssuedAt(payload.generationTimeUtc, office.timeZone)}`;
         copyButton.disabled = false;
