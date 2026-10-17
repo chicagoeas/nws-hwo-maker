@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17324d">
+  <title>LOT HWO — Text View</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #18232e;
+      background: #f3f5f7;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: #f3f5f7;
+    }
+
+    header {
+      padding: 15px max(20px, calc((100% - 980px) / 2));
+      color: #fff;
+      background: #17324d;
+      border-bottom: 3px solid #4b83ad;
+    }
+
+    .masthead {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .045em;
+    }
+
+    .masthead span {
+      color: #c6d5e2;
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    main {
+      width: min(100% - 32px, 900px);
+      margin: 28px auto 48px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .office-control {
+      display: grid;
+      gap: 5px;
+      min-width: 205px;
+    }
+
+    label, .updated {
+      color: #556575;
+      font-size: 12px;
+    }
+
+    select, button {
+      min-height: 38px;
+      padding: 7px 10px;
+      border: 1px solid #aeb9c3;
+      border-radius: 3px;
+      background: #fff;
+      color: #18232e;
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover:not(:disabled) {
+      background: #e8eef3;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: .65;
+    }
+
+    .report-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px 20px;
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      margin: 0;
+      color: #17324d;
+      font-size: clamp(20px, 4vw, 26px);
+      font-weight: 600;
+    }
+
+    .source-link {
+      color: #175a89;
+      font-size: 13px;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .updated {
+      margin: 0 0 12px;
+      line-height: 1.5;
+    }
+
+    .notice {
+      margin: 0 0 12px;
+      padding: 9px 11px;
+      border-left: 3px solid #8295a6;
+      background: #e8edf1;
+      color: #394b5b;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .report {
+      min-height: 290px;
+      margin: 0;
+      padding: 20px;
+      overflow-wrap: anywhere;
+      border: 1px solid #cbd3da;
+      border-radius: 3px;
+      background: #fff;
+      color: #17212b;
+      font: 14px/1.58 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+    }
+
+    .report[aria-busy="true"] { color: #536474; }
+
+    .error { color: #8b2323; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 540px) {
+      header { padding: 14px 16px; }
+      main { width: calc(100% - 24px); margin-top: 20px; }
+      .controls { align-items: stretch; flex-wrap: wrap; }
+      .office-control { flex: 1 1 100%; }
+      .controls button { flex: 1 1 0; }
+      .report { padding: 14px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="masthead">HAZARDOUS WEATHER OUTLOOK <span>TEXT VIEW</span></div>
+  </header>
+
+  <main>
+    <div class="controls">
+      <div class="office-control">
+        <label for="wfo">Weather Forecast Office</label>
+        <select id="wfo"></select>
+      </div>
+      <button id="refresh" type="button">Refresh</button>
+      <button id="copy" type="button" disabled>Copy text</button>
+    </div>
+
+    <div class="report-heading">
+      <h1 id="office-title">Chicago (LOT)</h1>
+      <a id="source-link" class="source-link" href="https://www.weather.gov/erh/ghwo?wfo=lot" target="_blank" rel="noopener noreferrer">Official graphical HWO</a>
+    </div>
+    <p id="updated" class="updated">Loading update time…</p>
+    <p class="notice">Unofficial text rendering of risk categories in the NWS Graphical HWO. Not issued or approved by the NWS; use the official source for the maps and current information.</p>
+    <pre id="report" class="report" aria-live="polite" aria-busy="true">Loading graphical HWO data…</pre>
+    <span id="status" class="sr-only" aria-live="polite"></span>
+  </main>
+
+  <script>
+    // This is the custom domain shown in the supplied SkyMonitor Worker.
+    // Change it if the Worker is deployed at a different hostname.
+    const WORKER_BASE_URL = "https://api.skymonitor.app";
+    const OFFICES = [
+      { code: "LOT", name: "Chicago, IL", title: "Chicago (LOT)", timeZone: "America/Chicago" }
+    ];
+
+    const officeSelect = document.getElementById("wfo");
+    const refreshButton = document.getElementById("refresh");
+    const copyButton = document.getElementById("copy");
+    const reportElement = document.getElementById("report");
+    const updatedElement = document.getElementById("updated");
+    const sourceLink = document.getElementById("source-link");
+    let currentText = "";
+
+    for (const office of OFFICES) {
+      const option = document.createElement("option");
+      option.value = office.code;
+      option.textContent = `${office.code} — ${office.name}`;
+      officeSelect.append(option);
+    }
+
+    function officeFor(code) {
+      return OFFICES.find((office) => office.code === code);
+    }
+
+    function formatIssuedAt(utcValue, timeZone) {
+      if (!utcValue) return "Update time unavailable";
+      const date = new Date(utcValue);
+      if (Number.isNaN(date.getTime())) return "Update time unavailable";
+      return new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone,
+        timeZoneName: "short"
+      }).format(date);
+    }
+
+    function dateTime(value) {
+      const parsed = Date.parse(value || "");
+      return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+    }
+
+    function buildDays(hazards) {
+      const daysByDate = new Map();
+      for (const hazard of hazards) {
+        for (const period of hazard.periods || []) {
+          if (!period.date) continue;
+          if (!daysByDate.has(period.date)) {
+            daysByDate.set(period.date, { date: period.date, periods: [] });
+          }
+          daysByDate.get(period.date).periods.push({ hazard, period });
+        }
+      }
+      return [...daysByDate.values()].sort((a, b) => dateTime(a.date) - dateTime(b.date));
+    }
+
+    function formatText(payload, office) {
+      const days = buildDays(payload.hazards || []);
+      const lines = [
+        "HAZARDOUS WEATHER OUTLOOK — TEXT SUMMARY",
+        `National Weather Service ${payload.officeName || office.name} (${office.code})`,
+        `Updated: ${formatIssuedAt(payload.generationTimeUtc, office.timeZone)}`,
+        ""
+      ];
+
+      if (!days.length) {
+        lines.push("No forecast periods were included in the graphical HWO data.");
+        return lines.join("\n");
+      }
+
+      lines.push(`.DAY ONE...${days[0].date}.`);
+      lines.push("Hazards shown in the graphical outlook:");
+      appendDayRisks(lines, days[0]);
+
+      if (days.length > 1) {
+        lines.push("");
+        lines.push(`.DAYS TWO THROUGH SEVEN...${days[1].date} through ${days[days.length - 1].date}.`);
+        for (let index = 1; index < days.length; index += 1) {
+          lines.push("");
+          lines.push(`${days[index].date}:`);
+          appendDayRisks(lines, days[index]);
+        }
+      }
+
+      return lines.join("\n");
+    }
+
+    function appendDayRisks(lines, day) {
+      const active = day.periods.filter(({ period }) => {
+        if (period.level == null || period.level === "") return false;
+        const level = Number(period.level);
+        return Number.isFinite(level) && level > 0;
+      });
+      const unmapped = day.periods.filter(({ period }) =>
+        period.level == null || period.level === ""
+      );
+
+      if (!active.length && !unmapped.length) {
+        lines.push("  No risk category above Level 0 is shown.");
+        return;
+      }
+
+      for (const { hazard, period } of active) {
+        const name = hazard.name.replace(/\s+Risk$/i, "");
+        const detail = period.definition ? ` — ${period.definition}` : "";
+        lines.push(`  ${name} Risk: Level ${period.level}${detail}`);
+      }
+
+      for (const { hazard } of unmapped) {
+        lines.push(`  ${hazard.name}: category unavailable; consult the official graphical HWO.`);
+      }
+    }
+
+    async function loadOutlook() {
+      const office = officeFor(officeSelect.value);
+      if (!office) return;
+
+      reportElement.setAttribute("aria-busy", "true");
+      reportElement.classList.remove("error");
+      reportElement.textContent = "Loading graphical HWO data…";
+      updatedElement.textContent = "Loading update time…";
+      refreshButton.disabled = true;
+      copyButton.disabled = true;
+      sourceLink.href = `https://www.weather.gov/erh/ghwo?wfo=${office.code.toLowerCase()}`;
+      document.getElementById("office-title").textContent = office.title;
+
+      try {
+        const endpoint = new URL("/api/ghwo", WORKER_BASE_URL);
+        endpoint.searchParams.set("wfo", office.code);
+        const response = await fetch(endpoint, { cache: "no-store" });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || `Worker returned HTTP ${response.status}`);
+        }
+
+        currentText = formatText(payload, office);
+        reportElement.textContent = currentText;
+        updatedElement.textContent = `Graphical HWO updated: ${formatIssuedAt(payload.generationTimeUtc, office.timeZone)}`;
+        copyButton.disabled = false;
+        document.getElementById("status").textContent = "Graphical HWO loaded.";
+      } catch (error) {
+        currentText = "";
+        reportElement.classList.add("error");
+        reportElement.textContent = `Unable to load the graphical HWO.\n\n${error.message}\n\nCheck that the Worker is deployed, its GitHub Pages origin is allowed by ALLOWED_ORIGIN, and WORKER_BASE_URL above matches the Worker hostname.`;
+        updatedElement.textContent = "Update unavailable";
+        document.getElementById("status").textContent = "Unable to load graphical HWO.";
+      } finally {
+        reportElement.setAttribute("aria-busy", "false");
+        refreshButton.disabled = false;
+      }
+    }
+
+    refreshButton.addEventListener("click", loadOutlook);
+    officeSelect.addEventListener("change", loadOutlook);
+    copyButton.addEventListener("click", async () => {
+      if (!currentText) return;
+      try {
+        await navigator.clipboard.writeText(currentText);
+        copyButton.textContent = "Copied";
+        window.setTimeout(() => { copyButton.textContent = "Copy text"; }, 1400);
+      } catch {
+        copyButton.textContent = "Copy unavailable";
+        window.setTimeout(() => { copyButton.textContent = "Copy text"; }, 1800);
+      }
+    });
+
+    loadOutlook();
+  </script>
+</body>
+</html>
