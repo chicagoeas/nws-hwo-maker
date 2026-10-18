@@ -240,6 +240,31 @@
         ],
         marineCoverage: "This Hazardous Weather Outlook is for portions of Lake Michigan.",
         spotterStatement: "Spotter activation will not be needed."
+      },
+      {
+        code: "IWX",
+        name: "Northern Indiana",
+        title: "Northern Indiana (IWX)",
+        timeZone: "America/Indiana/Indianapolis",
+        easternTimeZone: "America/New_York",
+        wmoPrefix: "FLUS43 KIWX",
+        productId: "HWOIWX",
+        officeLine: "National Weather Service Northern Indiana",
+        coverage: "This Hazardous Weather Outlook is for portions of northern Indiana, southwest Michigan, and northwest Ohio.",
+        ugcLines: [
+          "INZ005>009-012>015-017-018-020-022>027-032>034-103-104-116-203-204-216-",
+          "MIZ078>081-177-277-OHZ001-002-004-005-015-016-024-025-"
+        ],
+        zoneNameLines: [
+          "Elkhart-Lagrange-Steuben-De Kalb-Starke-Pulaski-Marshall-Fulton-",
+          "Whitley-Allen-White-Cass-Miami-Wabash-Huntington-Wells-Adams-",
+          "Grant-Blackford-Jay-Northern La Porte-Eastern St. Joseph-",
+          "Northern Kosciusko-Southern La Porte-Western St. Joseph-",
+          "Southern Kosciusko-Cass MI-St. Joseph MI-Branch-Hillsdale-",
+          "Northern Berrien-Southern Berrien-Williams-Fulton OH-Defiance-",
+          "Henry-Paulding-Putnam-Van Wert-Allen OH-"
+        ],
+        spotterStatement: "Spotter activation will not be needed."
       }
     ];
     const MARINE_HAZARD_NAMES = new Set([
@@ -363,8 +388,10 @@
     function formatLandOutlook(hazards, office, issueDate) {
       const expiryDate = new Date(issueDate.getTime() + 24 * 60 * 60 * 1000);
       const issueLine = formatNwsTimestamp(issueDate, office.timeZone);
-      const dualZoneIssueLine =
-        `${issueLine} /${formatNwsTimestamp(issueDate, office.easternTimeZone)}/`;
+      const easternIssueLine = formatNwsTimestamp(issueDate, office.easternTimeZone);
+      const dualZoneIssueLine = issueLine === easternIssueLine
+        ? issueLine
+        : `${issueLine} /${easternIssueLine}/`;
       const ugcLines = [...office.ugcLines];
       ugcLines[ugcLines.length - 1] += `${formatUtcCode(expiryDate)}-`;
       const days = buildDays(hazards);
