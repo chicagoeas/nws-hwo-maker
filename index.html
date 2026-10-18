@@ -264,6 +264,12 @@
           "Northern Berrien-Southern Berrien-Williams-Fulton OH-Defiance-",
           "Henry-Paulding-Putnam-Van Wert-Allen OH-"
         ],
+        marineUgcLines: ["LMZ043-046-"],
+        marineZoneNameLines: [
+          "New Buffalo MI to St Joseph MI-",
+          "Michigan City IN to New Buffalo MI-"
+        ],
+        marineCoverage: "This Hazardous Weather Outlook is for portions of Lake Michigan.",
         spotterStatement: "Spotter activation will not be needed."
       }
     ];
@@ -543,12 +549,12 @@
         updatedElement.textContent = `Graphical HWO updated: ${formatIssuedAt(payload.generationTimeUtc, office.timeZone)}`;
         copyButton.disabled = false;
         document.getElementById("status").textContent = "Graphical HWO loaded.";
-      } catch (error) {
+      } catch {
         currentText = "";
         reportElement.classList.add("error");
-        reportElement.textContent = `Unable to load the graphical HWO.\n\n${error.message}\n\nCheck that the Worker is deployed, its GitHub Pages origin is allowed by ALLOWED_ORIGIN, and WORKER_BASE_URL above matches the Worker hostname.`;
+        reportElement.textContent = "Error reading the Graphical HWO. Please try again.";
         updatedElement.textContent = "Update unavailable";
-        document.getElementById("status").textContent = "Unable to load graphical HWO.";
+        document.getElementById("status").textContent = "Error reading the Graphical HWO. Please try again.";
       } finally {
         reportElement.setAttribute("aria-busy", "false");
         refreshButton.disabled = false;
