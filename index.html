@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,10 +9,48 @@
     :root {
       color-scheme: light;
       font-family: Arial, Helvetica, sans-serif;
-      color: #18232e;
-      background: #f3f5f7;
+      color: var(--text);
+      background: var(--page-bg);
       font-synthesis: none;
       text-rendering: optimizeLegibility;
+      --page-bg: #f3f5f7;
+      --text: #18232e;
+      --header-bg: #17324d;
+      --header-border: #4b83ad;
+      --muted: #556575;
+      --control-border: #aeb9c3;
+      --surface: #fff;
+      --surface-hover: #e8eef3;
+      --heading: #17324d;
+      --link: #175a89;
+      --notice-bg: #e8edf1;
+      --notice-text: #394b5b;
+      --notice-border: #8295a6;
+      --report-border: #cbd3da;
+      --report-text: #17212b;
+      --report-busy: #536474;
+      --error: #8b2323;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --page-bg: #111923;
+      --text: #e2e9ef;
+      --header-bg: #0b1723;
+      --header-border: #38658a;
+      --muted: #a7b7c5;
+      --control-border: #536779;
+      --surface: #1b2835;
+      --surface-hover: #293b4d;
+      --heading: #dce9f4;
+      --link: #8fc8f0;
+      --notice-bg: #202e3a;
+      --notice-text: #d0dce5;
+      --notice-border: #66839b;
+      --report-border: #425363;
+      --report-text: #e2e9ef;
+      --report-busy: #a7b7c5;
+      --error: #ff9e9e;
     }
 
     * { box-sizing: border-box; }
@@ -20,30 +58,92 @@
     body {
       margin: 0;
       min-width: 320px;
-      background: #f3f5f7;
+      background: var(--page-bg);
     }
 
     header {
       padding: 15px max(20px, calc((100% - 980px) / 2));
       color: #fff;
-      background: #17324d;
-      border-bottom: 3px solid #4b83ad;
+      background: var(--header-bg);
+      border-bottom: 3px solid var(--header-border);
     }
 
     .masthead {
       display: flex;
-      align-items: baseline;
-      gap: 12px;
+      position: relative;
+      align-items: center;
+      justify-content: center;
+      gap: 12px 20px;
+      padding-right: 44px;
       font-size: 14px;
       font-weight: 700;
       letter-spacing: .045em;
+      text-align: center;
     }
 
-    .masthead span {
+    .masthead-credit {
       color: #c6d5e2;
       font-size: 12px;
       font-weight: 400;
       letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .masthead-credit a {
+      color: inherit;
+      text-underline-offset: 2px;
+    }
+
+    .theme-toggle {
+      position: absolute;
+      top: 50%;
+      right: 0;
+      display: grid;
+      width: 38px;
+      min-height: 38px;
+      padding: 7px;
+      place-items: center;
+      transform: translateY(-50%);
+      border: 1px solid rgba(255, 255, 255, .42);
+      border-radius: 4px;
+      background: transparent;
+      color: #fff;
+    }
+
+    .theme-toggle:hover:not(:disabled) {
+      background: rgba(255, 255, 255, .12);
+    }
+
+    .theme-toggle:focus-visible {
+      outline: 2px solid #78b9ff;
+      outline-offset: 2px;
+    }
+
+    .theme-toggle svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .theme-toggle .sun-icon { display: none; }
+    :root[data-theme="dark"] .theme-toggle .moon-icon { display: none; }
+    :root[data-theme="dark"] .theme-toggle .sun-icon { display: block; }
+
+    @media (max-width: 680px) {
+      .masthead {
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        padding-right: 42px;
+        font-size: 13px;
+      }
+
+      .masthead-credit {
+        white-space: normal;
+      }
     }
 
     main {
@@ -65,17 +165,17 @@
     }
 
     label, .updated {
-      color: #556575;
+      color: var(--muted);
       font-size: 12px;
     }
 
     select, button {
       min-height: 38px;
       padding: 7px 10px;
-      border: 1px solid #aeb9c3;
+      border: 1px solid var(--control-border);
       border-radius: 3px;
-      background: #fff;
-      color: #18232e;
+      background: var(--surface);
+      color: var(--text);
       font: inherit;
     }
 
@@ -85,7 +185,7 @@
     }
 
     button:hover:not(:disabled) {
-      background: #e8eef3;
+      background: var(--surface-hover);
     }
 
     button:disabled {
@@ -104,13 +204,13 @@
 
     h1 {
       margin: 0;
-      color: #17324d;
+      color: var(--heading);
       font-size: clamp(20px, 4vw, 26px);
       font-weight: 600;
     }
 
     .source-link {
-      color: #175a89;
+      color: var(--link);
       font-size: 13px;
       text-decoration: underline;
       text-underline-offset: 2px;
@@ -130,9 +230,9 @@
     .notice {
       margin: 0 0 12px;
       padding: 9px 11px;
-      border-left: 3px solid #8295a6;
-      background: #e8edf1;
-      color: #394b5b;
+      border-left: 3px solid var(--notice-border);
+      background: var(--notice-bg);
+      color: var(--notice-text);
       font-size: 12px;
       line-height: 1.45;
     }
@@ -142,17 +242,17 @@
       margin: 0;
       padding: 20px;
       overflow-wrap: anywhere;
-      border: 1px solid #cbd3da;
+      border: 1px solid var(--report-border);
       border-radius: 3px;
-      background: #fff;
-      color: #17212b;
+      background: var(--surface);
+      color: var(--report-text);
       font: 14px/1.58 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
       white-space: pre-wrap;
     }
 
-    .report[aria-busy="true"] { color: #536474; }
+    .report[aria-busy="true"] { color: var(--report-busy); }
 
-    .error { color: #8b2323; }
+    .error { color: var(--error); }
 
     .sr-only {
       position: absolute;
@@ -175,10 +275,32 @@
       .report { padding: 14px; font-size: 12px; }
     }
   </style>
+  <script>
+    try {
+      const savedTheme = localStorage.getItem("hwo-theme");
+      if (savedTheme === "light" || savedTheme === "dark") {
+        document.documentElement.dataset.theme = savedTheme;
+      }
+    } catch {
+      // The page still works when browser storage is unavailable.
+    }
+  </script>
 </head>
 <body>
   <header>
-    <div class="masthead">View Graphical Hazardous Weather Outlooks as Text</div>
+    <div class="masthead">
+      <span>View Graphical Hazardous Weather Outlooks as Text</span>
+      <span class="masthead-credit">Made by the creator of <a href="https://skymonitor.app" target="_blank" rel="noopener noreferrer">SkyMonitor</a></span>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15.1Z"></path>
+        </svg>
+        <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"></path>
+        </svg>
+      </button>
+    </div>
   </header>
 
   <main>
@@ -281,11 +403,33 @@
     const officeSelect = document.getElementById("wfo");
     const refreshButton = document.getElementById("refresh");
     const copyButton = document.getElementById("copy");
+    const themeToggleButton = document.getElementById("theme-toggle");
     const reportElement = document.getElementById("report");
     const updatedElement = document.getElementById("updated");
     const sourceLink = document.getElementById("source-link");
     const rawTextLink = document.getElementById("raw-text-link");
     let currentText = "";
+
+    function setTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      const nextTheme = theme === "dark" ? "light" : "dark";
+      const label = `Switch to ${nextTheme} mode`;
+      themeToggleButton.setAttribute("aria-label", label);
+      themeToggleButton.title = label;
+      document.querySelector('meta[name="theme-color"]')
+        .setAttribute("content", theme === "dark" ? "#0b1723" : "#17324d");
+      try {
+        localStorage.setItem("hwo-theme", theme);
+      } catch {
+        // Theme switching remains available for this page view.
+      }
+    }
+
+    setTheme(document.documentElement.dataset.theme || "light");
+    themeToggleButton.addEventListener("click", () => {
+      const currentTheme = document.documentElement.dataset.theme;
+      setTheme(currentTheme === "dark" ? "light" : "dark");
+    });
 
     for (const office of OFFICES) {
       const option = document.createElement("option");
